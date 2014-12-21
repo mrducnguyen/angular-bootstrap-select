@@ -115,30 +115,31 @@ angular.module('angular-bootstrap-select', [])
  * ```
  */
 
-function selectpickerDirective($parse) {
+function selectpickerDirective($parse, $timeout) {
   return {
     restrict: 'A',
     link: function (scope, element, attrs) {
-      if (element.hasClass('selectpicker')) return;
-
       element.selectpicker($parse(attrs.selectpicker)());
-      element.selectpicker('refresh');
+      
+      var refreshSelectpicker = function () {
+          $timeout(function () { // just to give browser a chance to finish its render before asking for a new one
+              element.selectpicker('refresh');
+          }, 0);
+      };
 
-      scope.$watch(attrs.ngModel, function (newVal, oldVal) {
-        scope.$parent[attrs.ngModel] = newVal;
-        scope.$evalAsync(function () {
-          if (!attrs.ngOptions || /track by/.test(attrs.ngOptions)) element.val(newVal);
-          element.selectpicker('refresh');
-        });
-      });
-
-      if (attrs.ngDisabled) {
-        scope.$watch(attrs.ngDisabled, function (newVal, oldVal) {
-          element.prop('disabled', newVal);
-          element.selectpicker('refresh');
-        });
+      if (attrs.ngModel) {
+        scope.$watch(attrs.ngModel, refreshSelectpicker);
       }
 
+      if (attrs.ngDisabled) {
+        scope.$watch(attrs.ngDisabled, refreshSelectpicker);
+      }
+      
+      if (attrs.ngOptions) {
+          var list = attrs.ngOptions.match(/ in ([^ ]*)/)[1];
+          scope.$watch(list, refreshSelectpicker);
+      }
+      
       scope.$on('$destroy', function () {
         scope.$evalAsync(function () {
           element.selectpicker('destroy');
